@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		title="Home"
+		creationComplete="init()">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.facebook.graph.FacebookMobile;
+			
+			import spark.events.ViewNavigatorEvent;
+			
+			//Your App Id as created on Facebook
+			private const APP_ID:String = "YOUR_APP_ID";
+			//App origin URL
+			private const FACEBOOK_APP_ORIGIN:String = "http://rjdesignz.com";
+			//Permissions Array
+			private const PERMISSIONS:Array = ["publish_stream"];
+			
+			//SatgeWebView to render Facebook login
+			private var facebookWebView:StageWebView;
+			private var accessToken:String = "";
+			
+			private function init():void
+			{
+				//Initialize Facebook library
+				FacebookMobile.init(APP_ID, onFacebookInit);
+			}
+			
+			private function onFacebookInit(result:Object, fail:Object):void
+			{
+				busyInd.visible = false;
+				fbLoginBtn.enabled = true;
+				
+				if(result)
+				{
+					accessToken = result.accessToken;
+					setPostMessage(result.user);
+				}
+			}
+			
+			private function onFBLoginClick(e:MouseEvent):void
+			{
+				busyInd.visible = true;
+				if(fbLoginBtn.label == "Login to Facebook")
+				{
+					facebookWebView = new StageWebView();
+					facebookWebView.viewPort = new Rectangle(0, navigator.actionBar.height, width, height);
+					FacebookMobile.login(onLogin, stage, PERMISSIONS,facebookWebView);
+				}
+				else if(fbLoginBtn.label == "Logout")
+				{
+					FacebookMobile.logout(onLogout, FACEBOOK_APP_ORIGIN);
+				}
+			}
+			
+			private function onLogin(result:Object, fail:Object):void
+			{
+				busyInd.visible = false;
+				if(result)
+				{
+					accessToken = result.accessToken;
+					setPostMessage(result.user);
+				}
+			}
+			
+			private function onLogout(success:Boolean):void
+			{
+				trace("onLogout");
+				fbLoginBtn.label = "Login to Facebook";
+				
+				postConainer.includeInLayout = true;
+				postConainer.visible = true;
+			}
+			
+			private function setPostMessage(userObj:Object):void
+			{
+				fbLoginBtn.label = "Logout";
+				fbLoginBtn.visible = false;
+				fbLoginBtn.includeInLayout = false;
+				
+				postConainer.includeInLayout = true;
+				postConainer.visible = true;
+				
+				nameLbl.text = "Welcome, " + userObj.name;
+				postTxtArea.text = "This is a message from the Test App";
+			}
+			
+			private function onPostOnWallClick(e:MouseEvent):void
+			{
+				busyInd.visible = true;
+				var params:Object = {};
+				params.message = postTxtArea.text;
+				params.action_token = accessToken;
+				FacebookMobile.api("/me/feed", onPostStatus, params, "POST");
+			}
+			
+			private function onPostStatus(result:Object, fail:Object):void
+			{
+				busyInd.visible = false;
+				if(result)
+				{
+					trace("Post Success!");
+				}
+				else
+				{
+					trace("Post Error!");
+				}
+			}
+			
+			private function onViewRemoving(e:ViewNavigatorEvent):void
+			{
+				try
+				{
+					facebookWebView.dispose();
+				}
+				catch(error:Error)
+				{
+					trace("No webview present");
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:SkinnableContainer width="100%" height="100%"
+						  top="10" bottom="10" left="10" right="10"
+						  backgroundAlpha="0">
+		<s:layout>
+			<s:VerticalLayout horizontalAlign="center"  />
+		</s:layout>
+		
+		<s:Button id="fbLoginBtn"
+				  label="Login to Facebook"
+				  width="80%"
+				  enabled="false"
+				  click="onFBLoginClick(event)"/>
+		
+		<s:VGroup id="postConainer"
+				  includeInLayout="false"
+				  visible="false"
+				  horizontalAlign="center"
+				  width="100%" height="100%">
+			<s:Label id="nameLbl" width="100%" />
+			<s:TextArea id="postTxtArea"
+						width="100%" height="50%" />
+			<s:Button id="postBtn"
+					  label="Post on Wall"
+					  width="50%"
+					  click="onPostOnWallClick(event)"/>
+		</s:VGroup>
+		
+	</s:SkinnableContainer>
+	
+	<s:actionContent>
+		<s:BusyIndicator id="busyInd" />
+	</s:actionContent>
+	
+</s:View>
